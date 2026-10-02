@@ -27,14 +27,13 @@ if config.config_file_name is not None:
 # DO NOT import future-week models until those weeks begin.
 from app.db.base import Base  # noqa: E402
 
-# Week 1 models (imported to register with Base.metadata):
-# These will be uncommented as they are created in Day 2+
-# from app.db.models.users import User, AuthSession  # noqa: E402
-# from app.db.models.tenants import Tenant, TenantMembership  # noqa: E402
-# from app.db.models.plans import Package, PackageVersion, Subscription  # noqa: E402
-# from app.db.models.settings import BusinessSettings  # noqa: E402
-# from app.db.models.contacts import Contact  # noqa: E402
-# from app.db.models.audit import PlatformAuditEvent, TenantAuditEvent  # noqa: E402
+# Week 1 models — all registered with Base.metadata for Alembic autogenerate
+from app.db.models.users import User, AuthSession  # noqa: F401, E402
+from app.db.models.tenants import Tenant, TenantMembership  # noqa: F401, E402
+from app.db.models.plans import Package, PackageVersion, Subscription  # noqa: F401, E402
+from app.db.models.settings import BusinessSettings  # noqa: F401, E402
+from app.db.models.contacts import Contact  # noqa: F401, E402
+from app.db.models.audit import PlatformAuditEvent, TenantAuditEvent  # noqa: F401, E402
 
 target_metadata = Base.metadata
 
