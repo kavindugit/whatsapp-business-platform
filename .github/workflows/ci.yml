@@ -1,0 +1,206 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend ────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend (lint, types, tests)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_postgres_password
+          POSTGRES_DB: wbp_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7.4-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+        ports:
+          - 6379:6379
+
+    env:
+      APP_ENV: test
+      APP_LABEL: wbp-ci
+      API_PREFIX: /api/v1
+      ALLOWED_ORIGINS: http://localhost:5173
+      DATABASE_URL: postgresql+psycopg://app_runtime:ci_runtime_pass@localhost:5432/wbp_test
+      MIGRATION_DATABASE_URL: postgresql+psycopg://migration_owner:ci_migration_pass@localhost:5432/wbp_test
+      TEST_DATABASE_URL: postgresql+psycopg://app_runtime:ci_runtime_pass@localhost:5432/wbp_test
+      REDIS_URL: redis://localhost:6379/0
+      SESSION_SECRET_KEY: ci_test_secret_key_at_least_32_bytes_long_here
+      THROTTLE_PSEUDONYM_SECRET: ci_throttle_secret_16chars
+      SESSION_IDLE_MINUTES: 30
+      SESSION_ABSOLUTE_HOURS: 12
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pip install uv==0.5.1
+
+      - name: Install dependencies
+        run: uv pip install -e ".[dev]" --system
+
+      - name: Lint (Ruff)
+        run: ruff check app/ tests/
+
+      - name: Format check (Ruff)
+        run: ruff format --check app/ tests/
+
+      - name: Type check (mypy)
+        run: mypy app/
+
+      - name: Create CI database roles
+        run: |
+          PGPASSWORD=ci_postgres_password psql -h localhost -U postgres -d wbp_test -c "
+            DO \$\$ BEGIN
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'migration_owner') THEN
+                CREATE ROLE migration_owner WITH LOGIN PASSWORD 'ci_migration_pass';
+              END IF;
+            END \$\$;
+            DO \$\$ BEGIN
+              IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'app_runtime') THEN
+                CREATE ROLE app_runtime WITH LOGIN PASSWORD 'ci_runtime_pass' NOINHERIT;
+              END IF;
+            END \$\$;
+            GRANT ALL ON SCHEMA public TO migration_owner;
+            GRANT USAGE ON SCHEMA public TO app_runtime;
+          "
+
+      - name: Apply migrations
+        run: python -m alembic upgrade head
+        env:
+          MIGRATION_DATABASE_URL: postgresql+psycopg2://migration_owner:ci_migration_pass@localhost:5432/wbp_test
+
+      - name: Run tests
+        run: pytest tests/ -v --cov=app --cov-report=xml --cov-report=term-missing
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          file: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+
+  # ── Frontend ───────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend (lint, types, tests, build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (ESLint)
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm type-check
+
+      - name: Run tests
+        run: pnpm test --run
+
+      - name: Build
+        run: pnpm build
+
+  # ── Browser smoke tests ────────────────────────────────────────────────────
+  browser:
+    name: Browser smoke tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    # Only run on push to main (not on every PR to save CI minutes)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create .env for CI
+        run: |
+          cp .env.example .env
+          sed -i 's/CHANGEME_RUNTIME_PASSWORD/ci_runtime_pass/g' .env
+          sed -i 's/CHANGEME_MIGRATION_PASSWORD/ci_migration_pass/g' .env
+          sed -i 's/CHANGEME_at_least_32_random_bytes_here/ci_test_secret_key_at_least_32_bytes_here/g' .env
+          sed -i 's/CHANGEME_separate_throttle_secret_here/ci_throttle_secret_32chars_ok/g' .env
+
+      - name: Start stack
+        run: docker compose up -d --build --wait
+
+      - name: Apply migrations + seed
+        run: |
+          docker exec wbp-api python -m alembic upgrade head
+          # Seed demo data once CLI is implemented (Day 1: no-op)
+          echo "Seed command will run from Day 2 onward"
+
+      - name: Install Playwright
+        run: |
+          cd frontend
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+
+      - name: Run browser smoke tests
+        run: |
+          cd frontend
+          pnpm e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v

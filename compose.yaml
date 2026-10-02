@@ -1,0 +1,130 @@
+# WhatsApp Business Automation Platform
+# Docker Compose — local development stack
+# Week 1: PostgreSQL + Redis + API + Web
+# Celery worker added in Week 2.
+#
+# Usage:
+#   docker compose up -d --build
+#   docker compose logs -f api
+#   docker compose down
+#
+# Ports exposed to host (loopback only for DB/Redis if enabled):
+#   Frontend: http://localhost:5173
+#   API:      http://localhost:8000  (direct, not needed — use /api via Vite proxy)
+#
+# Database and Redis ports are NOT published by default.
+# Uncomment the ports sections below only for local debugging, never in production.
+
+services:
+
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-wbp_dev}
+      # The superuser is only used during the init script; application roles own nothing.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:-postgres_local_only}
+      # Passed to the init script to create application roles:
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:-migration_owner}
+      POSTGRES_MIGRATION_PASSWORD: ${POSTGRES_MIGRATION_PASSWORD:-CHANGEME_MIGRATION_PASSWORD}
+      POSTGRES_RUNTIME_USER: ${POSTGRES_RUNTIME_USER:-app_runtime}
+      POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:-CHANGEME_RUNTIME_PASSWORD}
+      TEST_POSTGRES_DB: ${TEST_POSTGRES_DB:-wbp_test}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
+    # Uncomment ONLY for local debugging — never commit with ports exposed:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-wbp_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks:
+      - internal
+
+  # ── Redis ──────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no --maxmemory 128mb --maxmemory-policy allkeys-lru
+    # Redis is used for login throttling only in Week 1.
+    # Loss of Redis must not erase sessions or business data (they live in PostgreSQL).
+    # Uncomment ONLY for local debugging:
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    networks:
+      - internal
+
+  # ── API (FastAPI) ──────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: wbp-api
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Override host to use Docker service name
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_RUNTIME_USER:-app_runtime}:${POSTGRES_RUNTIME_PASSWORD:-CHANGEME_RUNTIME_PASSWORD}@db:5432/${POSTGRES_DB:-wbp_dev}
+      MIGRATION_DATABASE_URL: postgresql+psycopg://${POSTGRES_MIGRATION_USER:-migration_owner}:${POSTGRES_MIGRATION_PASSWORD:-CHANGEME_MIGRATION_PASSWORD}@db:5432/${POSTGRES_DB:-wbp_dev}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./backend:/app:cached
+    ports:
+      # Only published for direct API access / debugging; use Vite proxy in normal dev
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/live')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - internal
+    # NOTE: Container startup does NOT automatically run migrations.
+    # Run migrations explicitly: docker exec wbp-api python -m alembic upgrade head
+
+  # ── Web (React/Vite) ───────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: wbp-web
+    restart: unless-stopped
+    environment:
+      VITE_API_BASE: ""   # Empty string: Vite proxy handles /api → api:8000
+    volumes:
+      - ./frontend:/app:cached
+      - /app/node_modules   # Preserve container node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks:
+      - internal
+
+volumes:
+  postgres_data:
+    name: wbp_postgres_data
+
+networks:
+  internal:
+    driver: bridge
