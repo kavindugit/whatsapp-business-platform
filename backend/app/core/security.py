@@ -15,6 +15,7 @@ Origin validation (W1-041):
   - Never trust Host, X-Forwarded-Host, or Referer for security decisions
   - No wildcard credentialed CORS
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -24,7 +25,7 @@ from typing import TYPE_CHECKING
 
 import argon2
 from argon2 import PasswordHasher
-from argon2.exceptions import VerifyMismatchError, VerificationError, InvalidHashError
+from argon2.exceptions import InvalidHashError, VerificationError, VerifyMismatchError
 from fastapi import Request
 
 from app.core.errors import ForbiddenError, UnauthorizedError
@@ -35,11 +36,11 @@ if TYPE_CHECKING:
 # ── Argon2id configuration ─────────────────────────────────────────────────────
 # Minimum OWASP-aligned parameters. Adjust memory_cost upward on higher-RAM servers.
 _hasher = PasswordHasher(
-    time_cost=2,        # Number of iterations
+    time_cost=2,  # Number of iterations
     memory_cost=65536,  # 64 MB memory
-    parallelism=2,      # Parallel threads
-    hash_len=32,        # Output hash length in bytes
-    salt_len=16,        # Random salt length in bytes
+    parallelism=2,  # Parallel threads
+    hash_len=32,  # Output hash length in bytes
+    salt_len=16,  # Random salt length in bytes
     encoding="utf-8",
     type=argon2.Type.ID,  # Argon2id variant
 )
@@ -80,6 +81,7 @@ def dummy_password_check(attempted_password: str) -> None:
 
 # ── Session token generation ───────────────────────────────────────────────────
 
+
 def generate_session_token() -> str:
     """Generate a cryptographically random session token (256 bits = 32 bytes, hex-encoded)."""
     return secrets.token_hex(32)  # 64-character hex string
@@ -104,6 +106,7 @@ def verify_csrf_token(provided: str, expected: str) -> bool:
 
 
 # ── Origin validation ──────────────────────────────────────────────────────────
+
 
 def validate_origin(request: Request, allowed_origins: list[str]) -> None:
     """
@@ -137,6 +140,7 @@ def validate_csrf(request: Request, session_csrf_token: str) -> None:
 
 
 # ── Cookie helpers ─────────────────────────────────────────────────────────────
+
 
 def session_cookie_kwargs(
     *,

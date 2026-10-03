@@ -1,7 +1,9 @@
-from pydantic import BaseModel, ConfigDict
 import uuid
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Any
+
+from pydantic import BaseModel, ConfigDict
+
 
 class PackageVersionDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -12,8 +14,9 @@ class PackageVersionDTO(BaseModel):
     setup_price: int
     staff_limit: int
     number_limit: int
-    feature_permissions: Dict[str, Any]
-    metric_limits: Dict[str, Any]
+    feature_permissions: dict[str, Any]
+    metric_limits: dict[str, Any]
+
 
 class PackageDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -21,7 +24,8 @@ class PackageDTO(BaseModel):
     name: str
     release_status: str
     description: str
-    versions: List[PackageVersionDTO] = []
+    versions: list[PackageVersionDTO] = []
+
 
 class SubscriptionDTO(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -33,9 +37,10 @@ class SubscriptionDTO(BaseModel):
     period_end: datetime
     anchor_day: int
     created_at: datetime
-    
+
     # We will extend this manually in the router response to include "usage": "N/A"
-    
+
+
 class SubscriptionDetailDTO(BaseModel):
     subscription: SubscriptionDTO
     package: PackageDTO
@@ -44,6 +49,6 @@ class SubscriptionDetailDTO(BaseModel):
     setup_price: int
     staff_limit: int
     number_limit: int
-    feature_permissions: Dict[str, Any]
-    metric_limits: Dict[str, Any]
+    feature_permissions: dict[str, Any]
+    metric_limits: dict[str, Any]
     usage: str = "N/A"

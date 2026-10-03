@@ -16,6 +16,7 @@ Startup sequence:
 
 No migrations run on startup. Run: docker exec wbp-api python -m alembic upgrade head
 """
+
 from __future__ import annotations
 
 import redis.asyncio as aioredis
@@ -90,18 +91,22 @@ def create_app() -> FastAPI:
 
     # 9. API routers (registered as modules are implemented)
     from app.modules.auth.router import router as auth_router
+
     app.include_router(auth_router, prefix=settings.api_prefix)
-    
+
     # Tenancy router — Week 1 Day 4
     from app.modules.tenancy.router import router as tenancy_router
+
     app.include_router(tenancy_router, prefix=settings.api_prefix)
 
     # Plans router — Week 1 Day 4
     from app.modules.plans.router import router as plans_router
+
     app.include_router(plans_router, prefix=settings.api_prefix)
 
     # Contacts router — Week 1 Day 4
     from app.modules.contacts.router import router as contacts_router
+
     app.include_router(contacts_router, prefix=settings.api_prefix)
 
     logger.info(
@@ -117,7 +122,6 @@ def create_app() -> FastAPI:
 def _register_health_routes(app: FastAPI) -> None:
     """Register health check endpoints outside the API prefix."""
     import sqlalchemy as sa
-    import redis.asyncio as aioredis
 
     from app.core.config import get_settings
     from app.db.session import get_engine

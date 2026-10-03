@@ -28,6 +28,7 @@ Security invariants:
   - No optional tenant_id override
   - Application queries ALSO filter by tenant_id for defence-in-depth and index use
 """
+
 from __future__ import annotations
 
 import uuid

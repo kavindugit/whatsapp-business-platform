@@ -3,9 +3,10 @@ tests/unit/test_smoke.py
 Day 1 smoke tests — verify core module imports and configuration validation.
 Real database/auth tests are added in Day 2 and 3.
 """
+
 from __future__ import annotations
 
-import os
+from datetime import UTC
 
 import pytest
 
@@ -15,12 +16,13 @@ class TestConfigImport:
 
     def test_settings_module_importable(self) -> None:
         from app.core.config import Settings  # noqa: F401
+
         assert Settings is not None
 
     def test_settings_validates_missing_required(self) -> None:
         """Settings should fail clearly when required values are absent."""
-        from pydantic import ValidationError
         from app.core.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises((ValidationError, Exception)):
             Settings(
@@ -32,8 +34,8 @@ class TestConfigImport:
 
     def test_secret_key_too_short_rejected(self) -> None:
         """Short session secret keys must be rejected."""
-        from pydantic import ValidationError
         from app.core.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises((ValidationError, ValueError)):
             Settings(
@@ -46,8 +48,8 @@ class TestConfigImport:
 
     def test_changeme_placeholder_rejected(self) -> None:
         """CHANGEME placeholder values must be rejected."""
-        from pydantic import ValidationError
         from app.core.config import Settings
+        from pydantic import ValidationError
 
         with pytest.raises((ValidationError, ValueError)):
             Settings(
@@ -63,32 +65,34 @@ class TestClockModule:
     """Verify the clock abstraction works correctly."""
 
     def test_system_clock_returns_utc(self) -> None:
-        from datetime import timezone
         from app.core.clock import SystemClock
 
         clock = SystemClock()
         now = clock.utcnow()
-        assert now.tzinfo == timezone.utc
+        assert now.tzinfo == UTC
 
     def test_fixed_clock_returns_fixed_time(self) -> None:
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         from app.core.clock import FixedClock
 
-        fixed_time = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        fixed_time = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
         clock = FixedClock(fixed_time)
         assert clock.utcnow() == fixed_time
 
     def test_fixed_clock_advance(self) -> None:
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timedelta
+
         from app.core.clock import FixedClock
 
-        start = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        start = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
         clock = FixedClock(start)
         clock.advance(minutes=31)
         assert clock.utcnow() == start + timedelta(minutes=31)
 
     def test_fixed_clock_requires_timezone(self) -> None:
         from datetime import datetime
+
         from app.core.clock import FixedClock
 
         naive = datetime(2026, 1, 1, 12, 0, 0)  # No tzinfo

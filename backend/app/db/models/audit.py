@@ -9,12 +9,13 @@ Security invariants:
 - TenantAuditEvent is tenant-scoped and protected by RLS
 - PlatformAuditEvent is control-plane and accessed only by operator services
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, String, Text, func
+from sqlalchemy import DateTime, Index, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,11 +28,10 @@ class PlatformAuditEvent(Base):
     operator provisioning, and admin access patterns.
     Not protected by tenant RLS — access controlled by application services only.
     """
+
     __tablename__ = "platform_audit_events"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     target_tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
@@ -61,11 +61,10 @@ class TenantAuditEvent(Base):
     Protected by PostgreSQL Row-Level Security — only visible within the correct tenant context.
     Append-only: app_runtime has no UPDATE or DELETE privilege on this table.
     """
+
     __tablename__ = "tenant_audit_events"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     actor_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     action: Mapped[str] = mapped_column(String(100), nullable=False)

@@ -3,13 +3,13 @@ app/core/config.py
 Application configuration loaded from environment variables.
 Validation fails loudly on startup if required values are missing or invalid.
 """
+
 from __future__ import annotations
 
-import os
 from functools import lru_cache
 from typing import Annotated
 
-from pydantic import AnyUrl, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -95,13 +95,11 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
-    def validate_production_requirements(self) -> "Settings":
+    def validate_production_requirements(self) -> Settings:
         if self.is_production:
             # Production must not use any development defaults
             if "localhost" in self.allowed_origins or "127.0.0.1" in self.allowed_origins:
-                raise ValueError(
-                    "ALLOWED_ORIGINS must not include localhost in production"
-                )
+                raise ValueError("ALLOWED_ORIGINS must not include localhost in production")
         return self
 
 

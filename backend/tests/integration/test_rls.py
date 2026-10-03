@@ -14,31 +14,35 @@ Test design:
 - Sets app.tenant_id via set_config('app.tenant_id', ..., true) in a real transaction
 - Does NOT rely on application query filters — tests only the RLS mechanism
 """
+
 from __future__ import annotations
 
 import os
 import uuid
-from datetime import datetime, timezone
 
-import pytest
 import psycopg
-
+import pytest
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
+
 
 def get_migration_dsn() -> str:
     url = os.environ.get("MIGRATION_DATABASE_URL", "")
     if not url:
         pytest.skip("MIGRATION_DATABASE_URL not set — skipping RLS integration tests")
     # Convert SQLAlchemy URL prefix to libpq DSN for psycopg3
-    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
+    return url.replace("postgresql+psycopg://", "postgresql://").replace(
+        "postgresql+psycopg2://", "postgresql://"
+    )
 
 
 def get_runtime_dsn() -> str:
     url = os.environ.get("TEST_DATABASE_URL", os.environ.get("DATABASE_URL", ""))
     if not url:
         pytest.skip("TEST_DATABASE_URL not set — skipping RLS integration tests")
-    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
+    return url.replace("postgresql+psycopg://", "postgresql://").replace(
+        "postgresql+psycopg2://", "postgresql://"
+    )
 
 
 def provision_test_tenant(
@@ -130,12 +134,15 @@ def two_tenants(migration_conn):
     }
 
     # Cleanup
-    migration_conn.execute("DELETE FROM contacts WHERE tenant_id IN (%s, %s)",
-                           (str(tenant_a), str(tenant_b)))
-    migration_conn.execute("DELETE FROM business_settings WHERE tenant_id IN (%s, %s)",
-                           (str(tenant_a), str(tenant_b)))
-    migration_conn.execute("DELETE FROM tenants WHERE id IN (%s, %s)",
-                           (str(tenant_a), str(tenant_b)))
+    migration_conn.execute(
+        "DELETE FROM contacts WHERE tenant_id IN (%s, %s)", (str(tenant_a), str(tenant_b))
+    )
+    migration_conn.execute(
+        "DELETE FROM business_settings WHERE tenant_id IN (%s, %s)", (str(tenant_a), str(tenant_b))
+    )
+    migration_conn.execute(
+        "DELETE FROM tenants WHERE id IN (%s, %s)", (str(tenant_a), str(tenant_b))
+    )
     migration_conn.commit()
 
 
@@ -166,8 +173,9 @@ class TestT01CrossTenantReadIsolation:
         tenant_ids_returned = {str(row[1]) for row in rows}
 
         assert str(tenant_a) in tenant_ids_returned, "Should see own contacts"
-        assert str(tenant_b) not in tenant_ids_returned, \
+        assert str(tenant_b) not in tenant_ids_returned, (
             "T01 FAILED: Tenant B rows visible under Tenant A context — RLS breach!"
+        )
         assert len(rows) >= 2, "Should see at least the 2 contacts provisioned for tenant A"
 
     def test_tenant_b_sees_only_own_contacts(self, runtime_conn, two_tenants):
@@ -187,19 +195,19 @@ class TestT01CrossTenantReadIsolation:
         tenant_ids_returned = {str(row[1]) for row in rows}
 
         assert str(tenant_b) in tenant_ids_returned, "Should see own contacts"
-        assert str(tenant_a) not in tenant_ids_returned, \
+        assert str(tenant_a) not in tenant_ids_returned, (
             "T01 FAILED: Tenant A rows visible under Tenant B context — RLS breach!"
+        )
 
     def test_no_context_returns_zero_rows(self, runtime_conn, two_tenants):
         """Without any tenant context, zero rows should be visible (NULLIF → NULL → no match)."""
         runtime_conn.execute("SELECT set_config('app.tenant_id', '', true)")
 
-        rows = runtime_conn.execute(
-            "SELECT id FROM contacts"
-        ).fetchall()
+        rows = runtime_conn.execute("SELECT id FROM contacts").fetchall()
 
-        assert len(rows) == 0, \
+        assert len(rows) == 0, (
             "T01 FAILED: Rows visible with no tenant context — RLS policy is broken!"
+        )
 
     def test_business_settings_also_isolated(self, runtime_conn, two_tenants):
         """RLS also isolates business_settings (W1-030)."""
@@ -211,13 +219,12 @@ class TestT01CrossTenantReadIsolation:
             (str(tenant_a),),
         )
 
-        rows = runtime_conn.execute(
-            "SELECT tenant_id FROM business_settings"
-        ).fetchall()
+        rows = runtime_conn.execute("SELECT tenant_id FROM business_settings").fetchall()
 
         tenant_ids = {str(row[0]) for row in rows}
-        assert str(tenant_b) not in tenant_ids, \
+        assert str(tenant_b) not in tenant_ids, (
             "T01 FAILED: Tenant B business_settings visible under Tenant A context!"
+        )
 
 
 @pytest.mark.integration
@@ -256,8 +263,7 @@ class TestT02CrossTenantWriteIsolation:
         # Should raise a PostgreSQL error (new row violates RLS policy)
         error_msg = str(exc_info.value).lower()
         assert any(
-            phrase in error_msg
-            for phrase in ["policy", "violates", "permission", "check"]
+            phrase in error_msg for phrase in ["policy", "violates", "permission", "check"]
         ), f"T02 FAILED: Expected RLS policy error, got: {exc_info.value}"
 
         # Rollback for safety

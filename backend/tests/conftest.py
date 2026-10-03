@@ -4,16 +4,19 @@ Pytest configuration and shared fixtures.
 
 Day 1: Minimal fixtures — database-backed fixtures added in Day 2.
 """
+
 from __future__ import annotations
 
 import os
+import sys
 
 import pytest
-import sys
 
 if sys.platform == "win32":
     import asyncio
+
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 
 # Ensure we never accidentally run tests against the production/dev database
 def pytest_configure(config: pytest.Config) -> None:
@@ -35,6 +38,5 @@ def pytest_configure(config: pytest.Config) -> None:
     app_env = os.environ.get("APP_ENV", "")
     if app_env == "production":
         raise RuntimeError(
-            "Tests cannot run with APP_ENV=production. "
-            "Set APP_ENV=test in your test environment."
+            "Tests cannot run with APP_ENV=production. Set APP_ENV=test in your test environment."
         )

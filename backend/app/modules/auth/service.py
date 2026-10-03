@@ -1,21 +1,22 @@
 import datetime
+
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from sqlalchemy import update
 
-from app.core.config import get_settings
 from app.core.clock import system_clock
+from app.core.config import get_settings
 from app.core.errors import UnauthorizedError
 from app.core.security import (
-    verify_password,
     dummy_password_check,
+    generate_csrf_token,
     generate_session_token,
     hash_session_token,
-    generate_csrf_token
+    verify_password,
 )
-from app.db.models.users import User, AuthSession
 from app.db.models.tenants import Tenant, TenantMembership
-from app.modules.auth.schemas import LoginRequest, UserSummary, MembershipSummary
+from app.db.models.users import AuthSession, User
+from app.modules.auth.schemas import LoginRequest, MembershipSummary, UserSummary
 
 
 async def authenticate_user(session: AsyncSession, creds: LoginRequest) -> User:
@@ -36,9 +37,8 @@ async def authenticate_user(session: AsyncSession, creds: LoginRequest) -> User:
 
     return user
 
-async def create_session_for_user(
-    db: AsyncSession, user_id: str
-) -> tuple[str, str]:
+
+async def create_session_for_user(db: AsyncSession, user_id: str) -> tuple[str, str]:
     """
     Creates a new AuthSession.
     Returns (raw_session_token, csrf_token).
@@ -57,23 +57,26 @@ async def create_session_for_user(
         csrf_token=csrf_token,
         created_at=now,
         last_seen_at=now,
-        absolute_expiry=expiry
+        absolute_expiry=expiry,
     )
     db.add(auth_session)
     await db.commit()
     return raw_token, csrf_token
+
 
 async def get_user_summary(user: User) -> UserSummary:
     return UserSummary(
         id=str(user.id),
         email=user.email,
         display_name=user.display_name,
-        system_role=user.system_role
+        system_role=user.system_role,
     )
+
 
 async def get_user_memberships(db: AsyncSession, user_id: str) -> list[MembershipSummary]:
     """Returns all active workspace memberships for a user, with tenant display names."""
     import uuid
+
     stmt = (
         select(TenantMembership, Tenant)
         .join(Tenant, Tenant.id == TenantMembership.tenant_id)
@@ -84,21 +87,24 @@ async def get_user_memberships(db: AsyncSession, user_id: str) -> list[Membershi
     result = await db.execute(stmt)
     memberships = []
     for membership, tenant in result:
-        memberships.append(MembershipSummary(
-            tenant_id=membership.tenant_id,
-            display_name=tenant.display_name,
-            role=membership.role,
-            status=membership.status,
-            created_at=membership.created_at,
-        ))
+        memberships.append(
+            MembershipSummary(
+                tenant_id=membership.tenant_id,
+                display_name=tenant.display_name,
+                role=membership.role,
+                status=membership.status,
+                created_at=membership.created_at,
+            )
+        )
     return memberships
+
 
 async def revoke_session(db: AsyncSession, token_hash: str) -> None:
     now = system_clock.utcnow()
     stmt = (
         update(AuthSession)
         .where(AuthSession.token_hash == token_hash)
-        .where(AuthSession.revoked_at == None) # noqa
+        .where(AuthSession.revoked_at == None)  # noqa
         .values(revoked_at=now)
     )
     await db.execute(stmt)

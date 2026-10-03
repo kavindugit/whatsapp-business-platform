@@ -2,12 +2,13 @@
 app/db/models/tenants.py
 Control-plane models: Tenant and TenantMembership.
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String, UniqueConstraint, func, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,9 +18,7 @@ from app.db.base import Base
 class Tenant(Base):
     __tablename__ = "tenants"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     slug: Mapped[str] = mapped_column(String(63), nullable=False, unique=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     legal_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -37,10 +36,10 @@ class Tenant(Base):
     memberships: Mapped[list[TenantMembership]] = relationship(
         "TenantMembership", back_populates="tenant", cascade="all, delete-orphan"
     )
-    subscription: Mapped["Subscription | None"] = relationship(  # type: ignore[name-defined]
+    subscription: Mapped[Subscription | None] = relationship(  # type: ignore[name-defined]
         "Subscription", back_populates="tenant", uselist=False
     )
-    settings: Mapped["BusinessSettings | None"] = relationship(  # type: ignore[name-defined]
+    settings: Mapped[BusinessSettings | None] = relationship(  # type: ignore[name-defined]
         "BusinessSettings", back_populates="tenant", uselist=False
     )
 
@@ -51,9 +50,7 @@ class Tenant(Base):
 class TenantMembership(Base):
     __tablename__ = "tenant_memberships"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False
     )
@@ -71,7 +68,7 @@ class TenantMembership(Base):
 
     # Relationships
     tenant: Mapped[Tenant] = relationship("Tenant", back_populates="memberships")
-    user: Mapped["User"] = relationship("User", back_populates="memberships")  # type: ignore[name-defined]
+    user: Mapped[User] = relationship("User", back_populates="memberships")  # type: ignore[name-defined]
 
     __table_args__ = (
         UniqueConstraint("tenant_id", "user_id", name="uq_tenant_memberships_tenant_user"),

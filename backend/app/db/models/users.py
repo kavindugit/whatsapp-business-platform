@@ -4,12 +4,13 @@ Control-plane models: User and AuthSession.
 These are NOT protected by tenant RLS — they are accessed through
 narrowly scoped authentication services only.
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Index, String, Text, func, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -19,9 +20,7 @@ from app.db.base import Base
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(254), nullable=False, unique=True)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
@@ -38,7 +37,7 @@ class User(Base):
     sessions: Mapped[list[AuthSession]] = relationship(
         "AuthSession", back_populates="user", cascade="all, delete-orphan"
     )
-    memberships: Mapped[list["TenantMembership"]] = relationship(  # type: ignore[name-defined]
+    memberships: Mapped[list[TenantMembership]] = relationship(  # type: ignore[name-defined]
         "TenantMembership", back_populates="user"
     )
 
@@ -49,9 +48,7 @@ class User(Base):
 class AuthSession(Base):
     __tablename__ = "auth_sessions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
@@ -63,19 +60,18 @@ class AuthSession(Base):
     last_seen_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    absolute_expiry: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False
-    )
-    revoked_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    absolute_expiry: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Relationship
     user: Mapped[User] = relationship("User", back_populates="sessions")
 
     __table_args__ = (
-        Index("ix_auth_sessions_token_hash_active", "token_hash",
-              postgresql_where="revoked_at IS NULL"),
+        Index(
+            "ix_auth_sessions_token_hash_active",
+            "token_hash",
+            postgresql_where="revoked_at IS NULL",
+        ),
         Index("ix_auth_sessions_user_id", "user_id"),
     )
 

@@ -14,10 +14,11 @@ Usage in tests:
     # advance time
     fixed.advance(minutes=31)
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 class AbstractClock(ABC):
@@ -33,7 +34,7 @@ class SystemClock(AbstractClock):
     """Production clock: delegates to the real system time."""
 
     def utcnow(self) -> datetime:
-        return datetime.now(tz=timezone.utc)
+        return datetime.now(tz=UTC)
 
 
 class FixedClock(AbstractClock):

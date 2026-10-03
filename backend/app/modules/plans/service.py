@@ -1,18 +1,21 @@
 import uuid
-from typing import List
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from app.core.errors import NotFoundError
 from app.db.models.plans import Package, PackageVersion, Subscription
-from app.modules.plans.schemas import SubscriptionDetailDTO, SubscriptionDTO, PackageDTO
+from app.modules.plans.schemas import PackageDTO, SubscriptionDetailDTO, SubscriptionDTO
 
-async def get_packages(db: AsyncSession) -> List[Package]:
+
+async def get_packages(db: AsyncSession) -> list[Package]:
     from sqlalchemy.orm import selectinload
+
     # Returns all packages
     stmt = select(Package).options(selectinload(Package.versions)).order_by(Package.created_at)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
 
 async def get_tenant_subscription(db: AsyncSession, tenant_id: uuid.UUID) -> SubscriptionDetailDTO:
     stmt = (
@@ -25,9 +28,9 @@ async def get_tenant_subscription(db: AsyncSession, tenant_id: uuid.UUID) -> Sub
     row = result.first()
     if not row:
         raise NotFoundError("Subscription not found.")
-        
+
     subscription, pv, package = row
-    
+
     return SubscriptionDetailDTO(
         subscription=SubscriptionDTO.model_validate(subscription),
         package=PackageDTO.model_validate(package),
@@ -38,5 +41,5 @@ async def get_tenant_subscription(db: AsyncSession, tenant_id: uuid.UUID) -> Sub
         number_limit=pv.number_limit,
         feature_permissions=pv.feature_permissions,
         metric_limits=pv.metric_limits,
-        usage="N/A"
+        usage="N/A",
     )

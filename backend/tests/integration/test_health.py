@@ -3,13 +3,12 @@ tests/integration/test_health.py
 Integration test for health endpoints (T31).
 Tests against a real running API container.
 """
+
 from __future__ import annotations
 
 import pytest
-import httpx
-
-
 from fastapi.testclient import TestClient
+
 
 @pytest.mark.integration
 class TestHealthEndpoints:
@@ -22,6 +21,7 @@ class TestHealthEndpoints:
     def setup_client(self):
         # Import inside the fixture to ensure environment variables are loaded first
         from app.main import create_app
+
         app = create_app()
         self.client = TestClient(app)
 

@@ -8,18 +8,17 @@ Conventions:
   - created_at / updated_at on all mutable tables
   - Table names are explicit (no auto-pluralisation surprises)
 """
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 
-from sqlalchemy import DateTime, func
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
     """Shared declarative base for all ORM models."""
+
     pass
 
 

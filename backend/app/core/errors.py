@@ -12,6 +12,7 @@ All error responses use the common envelope:
 Stack traces, SQL queries, bound parameters, and credentials are NEVER included
 in responses. They are logged at ERROR level with the request_id for correlation.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -28,6 +29,7 @@ logger = structlog.get_logger(__name__)
 
 
 # ── Error envelope schema ─────────────────────────────────────────────────────
+
 
 class ErrorDetail(BaseModel):
     field: str | None = None
@@ -64,8 +66,10 @@ def make_error_response(
 
 # ── Application exception types ───────────────────────────────────────────────
 
+
 class AppError(Exception):
     """Base for all application-defined exceptions."""
+
     status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR
     code: str = "INTERNAL_ERROR"
     message: str = "An unexpected error occurred."
@@ -135,6 +139,7 @@ class SeatLimitExceededError(ConflictError):
 
 # ── FastAPI exception handlers ────────────────────────────────────────────────
 
+
 def _get_request_id(request: Request) -> str:
     """Extract request ID set by logging middleware, or generate a new one."""
     return getattr(request.state, "request_id", str(uuid.uuid4()))
@@ -159,9 +164,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     )
 
 
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     """Handle standard Starlette/FastAPI HTTP exceptions."""
     rid = _get_request_id(request)
     code_map = {

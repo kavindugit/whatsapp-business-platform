@@ -16,6 +16,7 @@ IMPORTANT:
   - Never share a connection across requests (pool handles checkout/return)
   - Tenant context (app.tenant_id) is set per-transaction; never persisted in the pool
 """
+
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
@@ -38,11 +39,11 @@ def create_runtime_engine(settings: Settings) -> AsyncEngine:
     """
     return create_async_engine(
         settings.database_url,
-        echo=settings.is_development,   # Log SQL in development only
+        echo=settings.is_development,  # Log SQL in development only
         pool_size=5,
         max_overflow=10,
-        pool_pre_ping=True,             # Detect stale connections
-        pool_recycle=300,               # Recycle connections after 5 minutes
+        pool_pre_ping=True,  # Detect stale connections
+        pool_recycle=300,  # Recycle connections after 5 minutes
         connect_args={
             "connect_timeout": 10,
         },

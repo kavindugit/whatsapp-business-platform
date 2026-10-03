@@ -13,11 +13,11 @@ Each log entry includes:
 Sensitive values (passwords, session tokens, CSRF values, raw contact data)
 must NEVER appear in log messages or structured fields.
 """
+
 from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Callable
 from typing import Any
 
 import structlog

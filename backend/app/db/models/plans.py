@@ -8,12 +8,22 @@ Key invariants (W1-060, W1-061):
 - Updating a PackageVersion must not silently mutate existing subscriptions
 - All prices are in integer minor units (LKR paise: 6900 LKR = 690000 minor units)
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text, UniqueConstraint, func, ForeignKey
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -43,14 +53,14 @@ class Package(Base):
 class PackageVersion(Base):
     __tablename__ = "package_versions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    package_code: Mapped[str] = mapped_column(
+        String(50), ForeignKey("packages.code"), nullable=False
     )
-    package_code: Mapped[str] = mapped_column(String(50), ForeignKey("packages.code"), nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="LKR")
-    monthly_price: Mapped[int] = mapped_column(BigInteger, nullable=False)   # minor units
-    setup_price: Mapped[int] = mapped_column(BigInteger, nullable=False)      # minor units
+    monthly_price: Mapped[int] = mapped_column(BigInteger, nullable=False)  # minor units
+    setup_price: Mapped[int] = mapped_column(BigInteger, nullable=False)  # minor units
     staff_limit: Mapped[int] = mapped_column(Integer, nullable=False)
     number_limit: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # JSON object: {feature_code: true, ...} — validated against feature registry
@@ -78,11 +88,12 @@ class PackageVersion(Base):
 class Subscription(Base):
     __tablename__ = "subscriptions"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, unique=True
+        UUID(as_uuid=True),
+        ForeignKey("tenants.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
     package_version_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("package_versions.id"), nullable=False
@@ -99,7 +110,7 @@ class Subscription(Base):
     )
 
     # Relationships
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="subscription")  # type: ignore[name-defined]
+    tenant: Mapped[Tenant] = relationship("Tenant", back_populates="subscription")  # type: ignore[name-defined]
     package_version: Mapped[PackageVersion] = relationship(
         "PackageVersion", back_populates="subscriptions"
     )

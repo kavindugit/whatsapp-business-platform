@@ -4,12 +4,13 @@ Tenant-owned model: BusinessSettings.
 Protected by PostgreSQL Row-Level Security.
 RLS policy: tenant_id = NULLIF(current_setting('app.tenant_id', true), '')::uuid
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, func, ForeignKey
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,7 +43,7 @@ class BusinessSettings(Base):
     )
 
     # Relationship
-    tenant: Mapped["Tenant"] = relationship("Tenant", back_populates="settings")  # type: ignore[name-defined]
+    tenant: Mapped[Tenant] = relationship("Tenant", back_populates="settings")  # type: ignore[name-defined]
 
     def __repr__(self) -> str:
         return f"<BusinessSettings tenant={self.tenant_id} name={self.business_name!r}>"

@@ -5,34 +5,36 @@ T15, T16 — Package catalogue and immutability tests.
 T15: All 10 packages present with correct codes, prices, and feature flags.
 T16: app_runtime cannot INSERT, UPDATE or DELETE package_versions (immutable).
 """
+
 from __future__ import annotations
 
 import os
-import uuid
 
-import pytest
 import psycopg
+import pytest
 
 
 def get_runtime_dsn() -> str:
     url = os.environ.get("TEST_DATABASE_URL", os.environ.get("DATABASE_URL", ""))
     if not url:
         pytest.skip("TEST_DATABASE_URL not set — skipping package integration tests")
-    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
+    return url.replace("postgresql+psycopg://", "postgresql://").replace(
+        "postgresql+psycopg2://", "postgresql://"
+    )
 
 
 # Expected package catalogue (W1-060)
 EXPECTED_PACKAGES = {
-    "starter":           {"monthly": 690000,   "setup": 2000000,   "staff": 1, "numbers": 1},
-    "updates":           {"monthly": 990000,   "setup": 3500000,   "staff": 2, "numbers": 1},
-    "receptionist":      {"monthly": 1290000,  "setup": 4000000,   "staff": 2, "numbers": 1},
-    "order_desk":        {"monthly": 1990000,  "setup": 6500000,   "staff": 3, "numbers": 1},
-    "appointments":      {"monthly": 1990000,  "setup": 6500000,   "staff": 3, "numbers": 1},
-    "sales_leads":       {"monthly": 2490000,  "setup": 8500000,   "staff": 4, "numbers": 1},
-    "support_team":      {"monthly": 3490000,  "setup": 10000000,  "staff": 5, "numbers": 1},
-    "connected_commerce":{"monthly": 4990000,  "setup": 15000000,  "staff": 5, "numbers": 1},
-    "retention":         {"monthly": 4490000,  "setup": 10000000,  "staff": 5, "numbers": 1},
-    "enterprise":        {"monthly": 14990000, "setup": 60000000,  "staff": 20,"numbers": 3},
+    "starter": {"monthly": 690000, "setup": 2000000, "staff": 1, "numbers": 1},
+    "updates": {"monthly": 990000, "setup": 3500000, "staff": 2, "numbers": 1},
+    "receptionist": {"monthly": 1290000, "setup": 4000000, "staff": 2, "numbers": 1},
+    "order_desk": {"monthly": 1990000, "setup": 6500000, "staff": 3, "numbers": 1},
+    "appointments": {"monthly": 1990000, "setup": 6500000, "staff": 3, "numbers": 1},
+    "sales_leads": {"monthly": 2490000, "setup": 8500000, "staff": 4, "numbers": 1},
+    "support_team": {"monthly": 3490000, "setup": 10000000, "staff": 5, "numbers": 1},
+    "connected_commerce": {"monthly": 4990000, "setup": 15000000, "staff": 5, "numbers": 1},
+    "retention": {"monthly": 4490000, "setup": 10000000, "staff": 5, "numbers": 1},
+    "enterprise": {"monthly": 14990000, "setup": 60000000, "staff": 20, "numbers": 3},
 }
 
 
@@ -50,9 +52,7 @@ class TestT15PackageCatalogue:
     """T15: All 10 packages exist with correct prices and all have release_status='planned'."""
 
     def test_all_ten_packages_present(self, runtime_conn):
-        rows = runtime_conn.execute(
-            "SELECT code FROM packages ORDER BY code"
-        ).fetchall()
+        rows = runtime_conn.execute("SELECT code FROM packages ORDER BY code").fetchall()
         codes = {row[0] for row in rows}
 
         missing = set(EXPECTED_PACKAGES.keys()) - codes
@@ -61,9 +61,7 @@ class TestT15PackageCatalogue:
         assert len(codes) == 10, f"T15 FAILED: Expected 10 packages, got {len(codes)}"
 
     def test_all_packages_have_planned_status(self, runtime_conn):
-        rows = runtime_conn.execute(
-            "SELECT code, release_status FROM packages"
-        ).fetchall()
+        rows = runtime_conn.execute("SELECT code, release_status FROM packages").fetchall()
         non_planned = [(row[0], row[1]) for row in rows if row[1] != "planned"]
         assert not non_planned, (
             f"T15 FAILED: Packages with non-planned status: {non_planned}. "
@@ -113,9 +111,14 @@ class TestT15PackageCatalogue:
         features = row[0]  # dict from JSONB
 
         required = [
-            "core_inbox", "contact_directory", "business_settings",
-            "ai_answers", "knowledge_base", "catalogue",
-            "order_capture", "calendar_booking",
+            "core_inbox",
+            "contact_directory",
+            "business_settings",
+            "ai_answers",
+            "knowledge_base",
+            "catalogue",
+            "order_capture",
+            "calendar_booking",
         ]
         for feat in required:
             assert features.get(feat) is True, (
@@ -162,8 +165,7 @@ class TestT16PackageVersionImmutability:
         runtime_conn.rollback()
         error_msg = str(exc_info.value).lower()
         assert any(
-            phrase in error_msg
-            for phrase in ["permission denied", "privilege", "denied"]
+            phrase in error_msg for phrase in ["permission denied", "privilege", "denied"]
         ), f"T16 FAILED: Expected permission error on INSERT, got: {exc_info.value}"
 
     def test_runtime_cannot_update_package_version(self, runtime_conn):
@@ -177,23 +179,19 @@ class TestT16PackageVersionImmutability:
         runtime_conn.rollback()
         error_msg = str(exc_info.value).lower()
         assert any(
-            phrase in error_msg
-            for phrase in ["permission denied", "privilege", "denied"]
+            phrase in error_msg for phrase in ["permission denied", "privilege", "denied"]
         ), f"T16 FAILED: Expected permission error on UPDATE, got: {exc_info.value}"
 
     def test_runtime_cannot_delete_package_version(self, runtime_conn):
         """app_runtime should not be able to DELETE from package_versions."""
         with pytest.raises(Exception) as exc_info:
-            runtime_conn.execute(
-                "DELETE FROM package_versions WHERE package_code = 'starter'"
-            )
+            runtime_conn.execute("DELETE FROM package_versions WHERE package_code = 'starter'")
             runtime_conn.commit()
 
         runtime_conn.rollback()
         error_msg = str(exc_info.value).lower()
         assert any(
-            phrase in error_msg
-            for phrase in ["permission denied", "privilege", "denied"]
+            phrase in error_msg for phrase in ["permission denied", "privilege", "denied"]
         ), f"T16 FAILED: Expected permission error on DELETE, got: {exc_info.value}"
 
     def test_runtime_cannot_insert_new_package(self, runtime_conn):
@@ -208,14 +206,11 @@ class TestT16PackageVersionImmutability:
         runtime_conn.rollback()
         error_msg = str(exc_info.value).lower()
         assert any(
-            phrase in error_msg
-            for phrase in ["permission denied", "privilege", "denied"]
+            phrase in error_msg for phrase in ["permission denied", "privilege", "denied"]
         ), f"T16 FAILED: Expected permission error on packages INSERT, got: {exc_info.value}"
 
     def test_runtime_can_read_packages(self, runtime_conn):
         """app_runtime MUST be able to SELECT from packages (needed for plan display)."""
-        rows = runtime_conn.execute(
-            "SELECT code FROM packages ORDER BY code"
-        ).fetchall()
+        rows = runtime_conn.execute("SELECT code FROM packages ORDER BY code").fetchall()
         # Should return all 10 packages
         assert len(rows) == 10, f"T16: Expected to read 10 packages, got {len(rows)}"
