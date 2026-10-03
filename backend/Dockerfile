@@ -14,12 +14,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # pip trusted-host configuration for SSL-intercepted networks
 ENV PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org pypi.python.org" \
-    PIP_NO_CACHE_DIR=1
+    PIP_INDEX_URL="https://pypi.org/simple/" \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=1000 \
+    PIP_RETRIES=10
 
 WORKDIR /app
-
-# Upgrade pip itself first (avoids old pip SSL bugs)
-RUN pip install --upgrade pip
 
 # Copy dependency manifests
 COPY pyproject.toml ./
@@ -29,7 +29,7 @@ FROM base AS development
 
 # Install all dependencies including dev extras
 # Uses pip directly (no uv) for maximum compatibility
-RUN pip install -e ".[dev]"
+RUN pip install --no-cache-dir -e ".[dev]"
 
 # Copy application source (mounted as volume in compose for hot-reload)
 COPY . .
@@ -43,7 +43,7 @@ CMD ["uvicorn", "app.main:create_app", "--factory", \
 FROM base AS production
 
 # Install production dependencies only
-RUN pip install -e "."
+RUN pip install --no-cache-dir -e "."
 
 COPY . .
 

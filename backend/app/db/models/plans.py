@@ -13,7 +13,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, DateTime, Integer, String, Text, UniqueConstraint, func, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -46,7 +46,7 @@ class PackageVersion(Base):
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
-    package_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    package_code: Mapped[str] = mapped_column(String(50), ForeignKey("packages.code"), nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), nullable=False, default="LKR")
     monthly_price: Mapped[int] = mapped_column(BigInteger, nullable=False)   # minor units
@@ -82,10 +82,10 @@ class Subscription(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     tenant_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False, unique=True
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, unique=True
     )
     package_version_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
+        UUID(as_uuid=True), ForeignKey("package_versions.id"), nullable=False
     )
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="trial")
     period_start: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

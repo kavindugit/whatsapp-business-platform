@@ -1,62 +1,103 @@
-/**
- * App.tsx
- * Root application component with router setup.
- * Full routing will be wired in Day 5 when all page components exist.
- * For Day 1, this renders a minimal placeholder that confirms the stack is running.
- */
-import type { FC } from "react";
+import { FC } from 'react';
+import { RouterProvider, createBrowserRouter, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
-const App: FC = () => {
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        flexDirection: "column",
-        gap: "1rem",
-        fontFamily: "Inter, sans-serif",
-        background: "var(--color-surface-0)",
-        color: "var(--color-text-primary)",
-      }}
-    >
-      <div
-        style={{
-          width: 56,
-          height: 56,
-          background: "linear-gradient(135deg, #22c55e, #16a34a)",
-          borderRadius: 16,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 28,
-          boxShadow: "0 0 30px rgba(34,197,94,0.3)",
-        }}
-      >
-        💬
-      </div>
-      <h1 style={{ fontSize: "1.5rem", fontWeight: 700, margin: 0 }}>
-        WhatsApp Business Platform
-      </h1>
-      <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-        Week 1 — Day 1 scaffold running ✓
-      </p>
-      <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-        Full dashboard coming Day 5. Check{" "}
-        <code
-          style={{
-            background: "var(--color-surface-3)",
-            padding: "0.1em 0.4em",
-            borderRadius: 4,
-          }}
-        >
-          /api/health/live
-        </code>{" "}
-        for API status.
-      </p>
-    </div>
-  );
-};
+import { AuthProvider } from './AuthContext';
+import { WorkspaceProvider } from './WorkspaceContext';
+import { ProtectedRoute } from '../components/ProtectedRoute';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+
+import { AuthLayout } from '../layouts/AuthLayout';
+import { DashboardLayout } from '../layouts/DashboardLayout';
+
+import { Login } from '../pages/Login';
+import { Workspaces } from '../pages/Workspaces';
+import { NotFoundPage, ForbiddenPage, SuspendedPage } from '../pages/ErrorPages';
+import { AdminTenantsPage } from '../pages/admin/AdminTenantsPage';
+import { Overview } from '../pages/dashboard/Overview';
+import { SettingsPage } from '../pages/dashboard/SettingsPage';
+import { ContactsPage } from '../pages/dashboard/ContactsPage';
+import { TeamPage } from '../pages/dashboard/TeamPage';
+import { PlanPage } from '../pages/dashboard/PlanPage';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 30_000,
+    },
+  },
+});
+
+const router = createBrowserRouter([
+  // Root redirect
+  { path: '/', element: <Navigate to="/login" replace /> },
+
+  // Public auth routes
+  {
+    element: <AuthLayout />,
+    children: [
+      { path: '/login', element: <Login /> },
+    ],
+  },
+
+  // Workspace selector (session required)
+  {
+    path: '/workspaces',
+    element: (
+      <ProtectedRoute>
+        <Workspaces />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Platform admin routes
+  {
+    path: '/admin/tenants',
+    element: (
+      <ProtectedRoute role="platform_admin">
+        <AdminTenantsPage />
+      </ProtectedRoute>
+    ),
+  },
+
+  // Tenant-scoped dashboard
+  {
+    path: '/app/:tenantId',
+    element: (
+      <ProtectedRoute>
+        <DashboardLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      { index: true, element: <Navigate to="overview" replace /> },
+      { path: 'overview', element: <Overview /> },
+      { path: 'contacts', element: <ContactsPage /> },
+      { path: 'team', element: <TeamPage /> },
+      { path: 'settings', element: <SettingsPage /> },
+      { path: 'plan', element: <PlanPage /> },
+    ],
+  },
+
+  // Error pages
+  { path: '/403', element: <ForbiddenPage /> },
+  { path: '/suspended', element: <SuspendedPage /> },
+  { path: '*', element: <NotFoundPage /> },
+]);
+
+const App: FC = () => (
+  <QueryClientProvider client={queryClient}>
+    <AuthProvider>
+      <WorkspaceProvider>
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
+        {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      </WorkspaceProvider>
+    </AuthProvider>
+  </QueryClientProvider>
+);
 
 export default App;

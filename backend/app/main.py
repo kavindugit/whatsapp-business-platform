@@ -89,10 +89,20 @@ def create_app() -> FastAPI:
     _register_health_routes(app)
 
     # 9. API routers (registered as modules are implemented)
-    # Auth router — Week 1 Day 3
+    from app.modules.auth.router import router as auth_router
+    app.include_router(auth_router, prefix=settings.api_prefix)
+    
     # Tenancy router — Week 1 Day 4
+    from app.modules.tenancy.router import router as tenancy_router
+    app.include_router(tenancy_router, prefix=settings.api_prefix)
+
     # Plans router — Week 1 Day 4
+    from app.modules.plans.router import router as plans_router
+    app.include_router(plans_router, prefix=settings.api_prefix)
+
     # Contacts router — Week 1 Day 4
+    from app.modules.contacts.router import router as contacts_router
+    app.include_router(contacts_router, prefix=settings.api_prefix)
 
     logger.info(
         "app_started",

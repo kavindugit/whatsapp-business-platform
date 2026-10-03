@@ -35,9 +35,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/db-init.sh:/docker-entrypoint-initdb.d/01-init.sh:ro
-    # Uncomment ONLY for local debugging — never commit with ports exposed:
-    # ports:
-    #   - "127.0.0.1:5432:5432"
+    # Published to loopback so host can run migrations/tests directly.
+    # Safe for local dev — loopback only, not reachable from the network.
+    ports:
+      - "127.0.0.1:5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d ${POSTGRES_DB:-wbp_dev}"]
       interval: 5s
@@ -54,9 +55,9 @@ services:
     command: redis-server --save "" --appendonly no --maxmemory 128mb --maxmemory-policy allkeys-lru
     # Redis is used for login throttling only in Week 1.
     # Loss of Redis must not erase sessions or business data (they live in PostgreSQL).
-    # Uncomment ONLY for local debugging:
-    # ports:
-    #   - "127.0.0.1:6379:6379"
+    # Published to loopback so host can connect for local development.
+    ports:
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

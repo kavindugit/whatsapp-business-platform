@@ -88,6 +88,9 @@ local-data/
 local-reports/
 playwright-report/
 test-results/
+*.log
+run_tests.ps1
+scripts/install_with_retry.py
 docs/reports/week-01-completion.md
 
 # ── IDE ───────────────────────────────────────────────────────────────────────

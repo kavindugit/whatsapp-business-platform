@@ -31,14 +31,14 @@ def get_migration_dsn() -> str:
     if not url:
         pytest.skip("MIGRATION_DATABASE_URL not set — skipping RLS integration tests")
     # Convert SQLAlchemy URL prefix to libpq DSN for psycopg3
-    return url.replace("postgresql+psycopg://", "").replace("postgresql+psycopg2://", "")
+    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
 
 
 def get_runtime_dsn() -> str:
     url = os.environ.get("TEST_DATABASE_URL", os.environ.get("DATABASE_URL", ""))
     if not url:
         pytest.skip("TEST_DATABASE_URL not set — skipping RLS integration tests")
-    return url.replace("postgresql+psycopg://", "").replace("postgresql+psycopg2://", "")
+    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
 
 
 def provision_test_tenant(

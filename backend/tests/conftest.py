@@ -9,6 +9,11 @@ from __future__ import annotations
 import os
 
 import pytest
+import sys
+
+if sys.platform == "win32":
+    import asyncio
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Ensure we never accidentally run tests against the production/dev database
 def pytest_configure(config: pytest.Config) -> None:
@@ -22,6 +27,10 @@ def pytest_configure(config: pytest.Config) -> None:
             "TEST_DATABASE_URL must be different from DATABASE_URL. "
             "Tests are NOT safe to run against the development or production database."
         )
+
+    # Override DATABASE_URL so the FastAPI app uses the test database
+    if test_db:
+        os.environ["DATABASE_URL"] = test_db
 
     app_env = os.environ.get("APP_ENV", "")
     if app_env == "production":

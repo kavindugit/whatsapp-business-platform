@@ -37,9 +37,10 @@ class PlatformAuditEvent(Base):
     target_tenant_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     target_user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    # Safe metadata only: action names, field names, safe identifiers
+    # Safe event data only: action names, field names, safe identifiers
     # NEVER: passwords, tokens, raw notes, contact data
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # 'metadata' is reserved by SQLAlchemy Declarative API — use event_data as attribute name
+    event_data: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -71,7 +72,8 @@ class TenantAuditEvent(Base):
     target_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     target_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    metadata: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    # 'metadata' reserved by SQLAlchemy — use event_data as Python attribute, DB column stays 'metadata'
+    event_data: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

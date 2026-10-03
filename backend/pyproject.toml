@@ -44,7 +44,7 @@ dev = [
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 where = ["."]
@@ -107,8 +107,14 @@ python_functions = ["test_*"]
 filterwarnings = [
     "error",
     "ignore::DeprecationWarning:pkg_resources",
+    "ignore:The anyio.abc.BlockingPortal alias is deprecated.*:DeprecationWarning",
+    "ignore:Setting per-request cookies:DeprecationWarning",
+    "ignore::ResourceWarning",
 ]
 addopts = "--tb=short -q"
+markers = [
+    "integration: requires live database and redis",
+]
 
 # ── coverage ──────────────────────────────────────────────────────────────────
 [tool.coverage.run]

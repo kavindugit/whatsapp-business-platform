@@ -18,7 +18,7 @@ def get_runtime_dsn() -> str:
     url = os.environ.get("TEST_DATABASE_URL", os.environ.get("DATABASE_URL", ""))
     if not url:
         pytest.skip("TEST_DATABASE_URL not set — skipping package integration tests")
-    return url.replace("postgresql+psycopg://", "").replace("postgresql+psycopg2://", "")
+    return url.replace("postgresql+psycopg://", "postgresql://").replace("postgresql+psycopg2://", "postgresql://")
 
 
 # Expected package catalogue (W1-060)

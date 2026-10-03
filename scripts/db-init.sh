@@ -21,7 +21,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DEV_DB" <<-EOSQL
     DO \$\$
     BEGIN
         IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '${MIGRATION_USER}') THEN
-            CREATE ROLE ${MIGRATION_USER} WITH LOGIN PASSWORD '${MIGRATION_PASS}';
+            CREATE ROLE ${MIGRATION_USER} WITH LOGIN PASSWORD '${MIGRATION_PASS}' BYPASSRLS;
         END IF;
     END
     \$\$;

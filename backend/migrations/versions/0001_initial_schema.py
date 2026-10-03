@@ -189,9 +189,6 @@ PACKAGES = [
 
 
 def upgrade() -> None:
-    # ── Extension ─────────────────────────────────────────────────────────────
-    op.execute("CREATE EXTENSION IF NOT EXISTS pgcrypto")
-
     # ── Control-plane tables ──────────────────────────────────────────────────
 
     # users
@@ -558,7 +555,7 @@ def upgrade() -> None:
         for code in pkg["features"]:
             assert code in VALID_FEATURE_CODES, f"Unknown feature code: {code}"
 
-        op.execute(
+        op.get_bind().execute(
             sa.text("""
                 INSERT INTO packages (code, name, release_status, description)
                 VALUES (:code, :name, 'planned', :description)
@@ -570,14 +567,14 @@ def upgrade() -> None:
                 "description": pkg["description"],
             },
         )
-        op.execute(
+        op.get_bind().execute(
             sa.text("""
                 INSERT INTO package_versions
                     (package_code, version, currency, monthly_price, setup_price,
                      staff_limit, number_limit, feature_permissions, metric_limits)
                 VALUES
                     (:code, 1, 'LKR', :monthly, :setup,
-                     :staff, :numbers, :features::jsonb, :metrics::jsonb)
+                     :staff, :numbers, CAST(:features AS jsonb), CAST(:metrics AS jsonb))
                 ON CONFLICT (package_code, version) DO NOTHING
             """),
             {

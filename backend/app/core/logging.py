@@ -55,9 +55,9 @@ def configure_logging(*, json_logs: bool = True) -> None:
 
     structlog.configure(
         processors=processors,  # type: ignore[arg-type]
-        wrapper_class=structlog.make_filtering_bound_logger(logging.DEBUG),
+        wrapper_class=structlog.stdlib.BoundLogger,
         context_class=dict,
-        logger_factory=structlog.PrintLoggerFactory(),
+        logger_factory=structlog.stdlib.LoggerFactory(),
         cache_logger_on_first_use=True,
     )
 

@@ -48,9 +48,8 @@ def get_migration_url() -> str:
             "Set it in your .env file (migration_owner role credentials)."
         )
     # Alembic uses synchronous psycopg; replace async driver prefix if present
-    return url.replace("postgresql+psycopg://", "postgresql+psycopg2://").replace(
-        "postgresql+asyncpg://", "postgresql+psycopg2://"
-    )
+    # The dialect for psycopg v3 sync is `postgresql+psycopg`
+    return url.replace("postgresql+asyncpg://", "postgresql+psycopg://")
 
 
 def run_migrations_offline() -> None:
